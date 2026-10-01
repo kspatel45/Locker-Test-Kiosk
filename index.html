@@ -343,6 +343,73 @@
             ubies: []
         };
 
+        function generateFullDefaultCommandsList() {
+            const list = [];
+            let globalUbieIndex = 1;
+
+            for (let col = 1; col <= 6; col++) {
+                const hexCol = col.toString(16).padStart(2, '0');
+
+                for (let latch = 1; latch <= 17; latch++) {
+                    const hexLatch = latch.toString(16).padStart(2, '0').toUpperCase();
+                    const scanCmd = `t${hexCol}124f${hexLatch}`;
+                    const scanFb = `t${hexCol}13736F${hexLatch}`;
+                    const openCmd = `t${hexCol}f24f${latch.toString(16).padStart(2, '0')}`;
+                    const openFb = `t${hexCol}f3736f${latch.toString(16).padStart(2, '0')}`;
+
+                    if (latch <= 16) {
+                        const localUbie = Math.floor((latch - 1) / 4) + 1;
+                        const ubiePort = ((latch - 1) % 4) + 1;
+                        
+                        // Calculate specific ubie index for global command formatting
+                        const currentUbieIdx = (col - 1) * 4 + localUbie;
+                        const hexUbieIdx = currentUbieIdx.toString(16).padStart(2, '0');
+                        const hexPort = ubiePort.toString(16).padStart(2, '0');
+
+                        const ubieCmd = `t${hexUbieIdx}A250${hexPort}`;
+                        const ubieFb = `t${hexUbieIdx}A86970${hexPort}0101`;
+                        const ubieFb1 = `t${hexUbieIdx}A86970${hexPort}0201`;
+                        const ubieFb2 = `t${hexUbieIdx}A86970${hexPort}0301`;
+                        const ubieFb3 = `t${hexUbieIdx}A86970${hexPort}0401`;
+
+                        list.push({
+                            column: col,
+                            latch: latch,
+                            ubie: localUbie,
+                            ubiePort: ubiePort,
+                            scanCmd: scanCmd,
+                            scanFb: scanFb,
+                            openCmd: openCmd,
+                            openFb: openFb,
+                            ubieCmd: ubieCmd,
+                            ubieFb: ubieFb,
+                            ubieFb1: ubieFb1,
+                            ubieFb2: ubieFb2,
+                            ubieFb3: ubieFb3
+                        });
+                    } else {
+                        // Latch 17 has no UBIE module attached
+                        list.push({
+                            column: col,
+                            latch: latch,
+                            ubie: null,
+                            ubiePort: null,
+                            scanCmd: scanCmd,
+                            scanFb: scanFb,
+                            openCmd: openCmd,
+                            openFb: openFb,
+                            ubieCmd: null,
+                            ubieFb: null,
+                            ubieFb1: null,
+                            ubieFb2: null,
+                            ubieFb3: null
+                        });
+                    }
+                }
+            }
+            return list;
+        }
+
         const DEFAULT_CONFIG_DATA = {
             "globalScanRules": {
                 "alfies": [
@@ -380,42 +447,7 @@
                     { "col": 6, "ubie": 4, "cmd": "t18A156", "fb": "t18A469560101" }
                 ]
             },
-            "commandsList": [
-                { "column": 1, "latch": 1, "ubie": 1, "ubiePort": 1, "scanCmd": "t01124f01", "scanFb": "t0113736F01", "openCmd": "t01f24f01", "openFb": "t01f3736f01", "ubieCmd": "t01A25001", "ubieFb": "t01A86970010101", "ubieFb1": "t01A86970010201", "ubieFb2": "t01A86970010301", "ubieFb3": "t01A86970010401" },
-                { "column": 1, "latch": 2, "ubie": 1, "ubiePort": 2, "scanCmd": "t01124f02", "scanFb": "t0113736F02", "openCmd": "t01f24f02", "openFb": "t01f3736f02", "ubieCmd": "t01A25002", "ubieFb": "t01A86970020101", "ubieFb1": "t01A86970020201", "ubieFb2": "t01A86970020301", "ubieFb3": "t01A86970020401" },
-                { "column": 1, "latch": 3, "ubie": 1, "ubiePort": 3, "scanCmd": "t01124f03", "scanFb": "t0113736F03", "openCmd": "t01f24f03", "openFb": "t01f3736f03", "ubieCmd": "t01A25003", "ubieFb": "t01A86970030101", "ubieFb1": "t01A86970030201", "ubieFb2": "t01A86970030301", "ubieFb3": "t01A86970030401" },
-                { "column": 1, "latch": 4, "ubie": 1, "ubiePort": 4, "scanCmd": "t01124f04", "scanFb": "t0113736F04", "openCmd": "t01f24f04", "openFb": "t01f3736f04", "ubieCmd": "t01A25004", "ubieFb": "t01A86970040101", "ubieFb1": "t01A86970040201", "ubieFb2": "t01A86970040301", "ubieFb3": "t01A86970040401" },
-                { "column": 1, "latch": 5, "ubie": 2, "ubiePort": 1, "scanCmd": "t01124f05", "scanFb": "t0113736F05", "openCmd": "t01f24f05", "openFb": "t01f3736f05", "ubieCmd": "t02A25001", "ubieFb": "t02A86970010101", "ubieFb1": "t02A86970010201", "ubieFb2": "t02A86970010301", "ubieFb3": "t02A86970010401" },
-                { "column": 1, "latch": 6, "ubie": 2, "ubiePort": 2, "scanCmd": "t01124f06", "scanFb": "t0113736F06", "openCmd": "t01f24f06", "openFb": "t01f3736f06", "ubieCmd": "t02A25002", "ubieFb": "t02A86970020101", "ubieFb1": "t02A86970020201", "ubieFb2": "t02A86970020301", "ubieFb3": "t02A86970020401" },
-                { "column": 1, "latch": 7, "ubie": 2, "ubiePort": 3, "scanCmd": "t01124f07", "scanFb": "t0113736F07", "openCmd": "t01f24f07", "openFb": "t01f3736f07", "ubieCmd": "t02A25003", "ubieFb": "t02A86970030101", "ubieFb1": "t02A86970030201", "ubieFb2": "t02A86970030301", "ubieFb3": "t02A86970030401" },
-                { "column": 1, "latch": 8, "ubie": 2, "ubiePort": 4, "scanCmd": "t01124f08", "scanFb": "t0113736F08", "openCmd": "t01f24f08", "openFb": "t01f3736f08", "ubieCmd": "t02A25004", "ubieFb": "t02A86970040101", "ubieFb1": "t02A86970040201", "ubieFb2": "t02A86970040301", "ubieFb3": "t02A86970040401" },
-                { "column": 1, "latch": 9, "ubie": 3, "ubiePort": 1, "scanCmd": "t01124f09", "scanFb": "t0113736F09", "openCmd": "t01f24f09", "openFb": "t01f3736f09", "ubieCmd": "t03A25001", "ubieFb": "t03A86970010101", "ubieFb1": "t03A86970010201", "ubieFb2": "t03A86970010301", "ubieFb3": "t03A86970010401" },
-                { "column": 1, "latch": 10, "ubie": 3, "ubiePort": 2, "scanCmd": "t01124f0A", "scanFb": "t0113736F0A", "openCmd": "t01f24f0a", "openFb": "t01f3736f0a", "ubieCmd": "t03A25002", "ubieFb": "t03A86970020101", "ubieFb1": "t03A86970020201", "ubieFb2": "t03A86970020301", "ubieFb3": "t03A86970020401" },
-                { "column": 1, "latch": 11, "ubie": 3, "ubiePort": 3, "scanCmd": "t01124f0B", "scanFb": "t0113736F0B", "openCmd": "t01f24f0b", "openFb": "t01f3736f0b", "ubieCmd": "t03A25003", "ubieFb": "t03A86970030101", "ubieFb1": "t03A86970030201", "ubieFb2": "t03A86970030301", "ubieFb3": "t03A86970030401" },
-                { "column": 1, "latch": 12, "ubie": 3, "ubiePort": 4, "scanCmd": "t01124f0C", "scanFb": "t0113736F0C", "openCmd": "t01f24f0c", "openFb": "t01f3736f0c", "ubieCmd": "t03A25004", "ubieFb": "t03A86970040101", "ubieFb1": "t03A86970040201", "ubieFb2": "t03A86970040301", "ubieFb3": "t03A86970040401" },
-                { "column": 1, "latch": 13, "ubie": 4, "ubiePort": 1, "scanCmd": "t01124f0D", "scanFb": "t0113736F0D", "openCmd": "t01f24f0d", "openFb": "t01f3736f0d", "ubieCmd": "t04A25001", "ubieFb": "t04A86970010101", "ubieFb1": "t04A86970010201", "ubieFb2": "t04A86970010301", "ubieFb3": "t04A86970010401" },
-                { "column": 1, "latch": 14, "ubie": 4, "ubiePort": 2, "scanCmd": "t01124f0E", "scanFb": "t0113736F0E", "openCmd": "t01f24f0e", "openFb": "t01f3736f0e", "ubieCmd": "t04A25002", "ubieFb": "t04A86970020101", "ubieFb1": "t04A86970020201", "ubieFb2": "t04A86970020301", "ubieFb3": "t04A86970020401" },
-                { "column": 1, "latch": 15, "ubie": 4, "ubiePort": 3, "scanCmd": "t01124f0F", "scanFb": "t0113736F0F", "openCmd": "t01f24f0f", "openFb": "t01f3736f0f", "ubieCmd": "t04A25003", "ubieFb": "t04A86970030101", "ubieFb1": "t04A86970030201", "ubieFb2": "t04A86970030301", "ubieFb3": "t04A86970030401" },
-                { "column": 1, "latch": 16, "ubie": 4, "ubiePort": 4, "scanCmd": "t01124f10", "scanFb": "t0113736F10", "openCmd": "t01f24f10", "openFb": "t01f3736f10", "ubieCmd": "t04A25004", "ubieFb": "t04A86970040101", "ubieFb1": "t04A86970040201", "ubieFb2": "t04A86970040301", "ubieFb3": "t04A86970040401" },
-                { "column": 1, "latch": 17, "ubie": null, "ubiePort": null, "scanCmd": "t01124f11", "scanFb": "t0113736F11", "openCmd": "t01f24f11", "openFb": "t01f3736f11", "ubieCmd": null, "ubieFb": null, "ubieFb1": null, "ubieFb2": null, "ubieFb3": null },
-                { "column": 2, "latch": 1, "ubie": 1, "ubiePort": 1, "scanCmd": "t02124f01", "scanFb": "t0213736F01", "openCmd": "t02f24f01", "openFb": "t02f3736f01", "ubieCmd": "t05A25001", "ubieFb": "t05A86970010101", "ubieFb1": "t05A86970010201", "ubieFb2": "t05A86970010301", "ubieFb3": "t05A86970010401" },
-                { "column": 2, "latch": 2, "ubie": 1, "ubiePort": 2, "scanCmd": "t02124f02", "scanFb": "t0213736F02", "openCmd": "t02f24f02", "openFb": "t02f3736f02", "ubieCmd": "t05A25002", "ubieFb": "t05A86970020101", "ubieFb1": "t05A86970020201", "ubieFb2": "t05A86970020301", "ubieFb3": "t05A86970020401" },
-                { "column": 2, "latch": 3, "ubie": 1, "ubiePort": 3, "scanCmd": "t02124f03", "scanFb": "t0213736F03", "openCmd": "t02f24f03", "openFb": "t02f3736f03", "ubieCmd": "t05A25003", "ubieFb": "t05A86970030101", "ubieFb1": "t05A86970030201", "ubieFb2": "t05A86970030301", "ubieFb3": "t05A86970030401" },
-                { "column": 2, "latch": 4, "ubie": 1, "ubiePort": 4, "scanCmd": "t02124f04", "scanFb": "t0213736F04", "openCmd": "t02f24f04", "openFb": "t02f3736f04", "ubieCmd": "t05A25004", "ubieFb": "t05A86970040101", "ubieFb1": "t05A86970040201", "ubieFb2": "t05A86970040301", "ubieFb3": "t05A86970040401" },
-                { "column": 2, "latch": 5, "ubie": 2, "ubiePort": 1, "scanCmd": "t02124f05", "scanFb": "t0213736F05", "openCmd": "t02f24f05", "openFb": "t02f3736f05", "ubieCmd": "t06A25001", "ubieFb": "t06A86970010101", "ubieFb1": "t06A86970010201", "ubieFb2": "t06A86970010301", "ubieFb3": "t06A86970010401" },
-                { "column": 2, "latch": 6, "ubie": 2, "ubiePort": 2, "scanCmd": "t02124f06", "scanFb": "t0213736F06", "openCmd": "t02f24f06", "openFb": "t02f3736f06", "ubieCmd": "t06A25002", "ubieFb": "t06A86970020101", "ubieFb1": "t06A86970020201", "ubieFb2": "t06A86970020301", "ubieFb3": "t06A86970020401" },
-                { "column": 2, "latch": 7, "ubie": 2, "ubiePort": 3, "scanCmd": "t02124f07", "scanFb": "t0213736F07", "openCmd": "t02f24f07", "openFb": "t02f3736f07", "ubieCmd": "t06A25003", "ubieFb": "t06A86970030101", "ubieFb1": "t06A86970030201", "ubieFb2": "t06A86970030301", "ubieFb3": "t06A86970030401" },
-                { "column": 2, "latch": 8, "ubie": 2, "ubiePort": 4, "scanCmd": "t02124f08", "scanFb": "t0213736F08", "openCmd": "t02f24f08", "openFb": "t02f3736f08", "ubieCmd": "t06A25004", "ubieFb": "t06A86970040101", "ubieFb1": "t06A86970040201", "ubieFb2": "t06A86970040301", "ubieFb3": "t06A86970040401" },
-                { "column": 2, "latch": 9, "ubie": 3, "ubiePort": 1, "scanCmd": "t02124f09", "scanFb": "t0213736F09", "openCmd": "t02f24f09", "openFb": "t02f3736f09", "ubieCmd": "t07A25001", "ubieFb": "t07A86970010101", "ubieFb1": "t07A86970010201", "ubieFb2": "t07A86970010301", "ubieFb3": "t07A86970010401" },
-                { "column": 2, "latch": 10, "ubie": 3, "ubiePort": 2, "scanCmd": "t02124f0A", "scanFb": "t0213736F0A", "openCmd": "t02f24f0a", "openFb": "t02f3736f0a", "ubieCmd": "t07A25002", "ubieFb": "t07A86970020101", "ubieFb1": "t07A86970020201", "ubieFb2": "t07A86970020301", "ubieFb3": "t07A86970020401" },
-                { "column": 2, "latch": 11, "ubie": 3, "ubiePort": 3, "scanCmd": "t02124f0B", "scanFb": "t0213736F0B", "openCmd": "t02f24f0b", "openFb": "t02f3736f0b", "ubieCmd": "t07A25003", "ubieFb": "t07A86970030101", "ubieFb1": "t07A86970030201", "ubieFb2": "t07A86970030301", "ubieFb3": "t07A86970030401" },
-                { "column": 2, "latch": 12, "ubie": 3, "ubiePort": 4, "scanCmd": "t02124f0C", "scanFb": "t0213736F0C", "openCmd": "t02f24f0c", "openFb": "t02f3736f0c", "ubieCmd": "t07A25004", "ubieFb": "t07A86970040101", "ubieFb1": "t07A86970040201", "ubieFb2": "t07A86970040301", "ubieFb3": "t07A86970040401" },
-                { "column": 2, "latch": 13, "ubie": 4, "ubiePort": 1, "scanCmd": "t02124f0D", "scanFb": "t0213736F0D", "openCmd": "t02f24f0d", "openFb": "t02f3736f0d", "ubieCmd": "t08A25001", "ubieFb": "t08A86970010101", "ubieFb1": "t08A86970010201", "ubieFb2": "t08A86970010301", "ubieFb3": "t08A86970010401" },
-                { "column": 2, "latch": 14, "ubie": 4, "ubiePort": 2, "scanCmd": "t02124f0E", "scanFb": "t0213736F0E", "openCmd": "t02f24f0e", "openFb": "t02f3736f0e", "ubieCmd": "t08A25002", "ubieFb": "t08A86970020101", "ubieFb1": "t08A86970020201", "ubieFb2": "t08A86970020301", "ubieFb3": "t08A86970020401" },
-                { "column": 2, "latch": 15, "ubie": 4, "ubiePort": 3, "scanCmd": "t02124f0F", "scanFb": "t0213736F0F", "openCmd": "t02f24f0f", "openFb": "t02f3736f0f", "ubieCmd": "t08A25003", "ubieFb": "t08A86970030101", "ubieFb1": "t08A86970030201", "ubieFb2": "t08A86970030301", "ubieFb3": "t08A86970030401" },
-                { "column": 2, "latch": 16, "ubie": 4, "ubiePort": 4, "scanCmd": "t02124f10", "scanFb": "t0213736F10", "openCmd": "t02f24f10", "openFb": "t02f3736f10", "ubieCmd": "t08A25004", "ubieFb": "t08A86970040101", "ubieFb1": "t08A86970040201", "ubieFb2": "t08A86970040301", "ubieFb3": "t08A86970040401" },
-                { "column": 2, "latch": 17, "ubie": null, "ubiePort": null, "scanCmd": "t02124f11", "scanFb": "t0213736F11", "openCmd": "t02f24f11", "openFb": "t02f3736f11", "ubieCmd": null, "ubieFb": null, "ubieFb1": null, "ubieFb2": null, "ubieFb3": null }
-            ]
+            "commandsList": generateFullDefaultCommandsList()
         };
 
         const STORAGE_KEY = "lowes_kiosk_cmd_config";
@@ -448,9 +480,12 @@
                 if (saved) {
                     const parsed = JSON.parse(saved);
                     if (parsed.commandsList && Array.isArray(parsed.commandsList)) {
-                        commandsList = parsed.commandsList;
-                        if (parsed.globalScanRules) globalScanRules = parsed.globalScanRules;
-                        return true;
+                        // Validate if stored list has all 6 columns mapped (102 items)
+                        if (parsed.commandsList.length >= 102) {
+                            commandsList = parsed.commandsList;
+                            if (parsed.globalScanRules) globalScanRules = parsed.globalScanRules;
+                            return true;
+                        }
                     }
                 }
             } catch (err) {
@@ -696,7 +731,6 @@
             if (abortTesting) throw new Error("Test Aborted");
 
             const startTime = Date.now();
-            let matchedResult = null;
 
             return new Promise((resolve, reject) => {
                 let intervalTimer = null;
@@ -737,7 +771,7 @@
                             await writer.write(payload);
                             writer.releaseLock();
                         } else {
-                            // Simulation mode response trigger after 2s
+                            // Simulation mode response trigger after 1.5s
                             if (Date.now() - startTime >= 1500) {
                                 const mockFb = expectedResponses[0] || "UBIE_OK";
                                 handleReceivedLine(mockFb);
@@ -1287,7 +1321,7 @@
                 try {
                     const parsed = JSON.parse(e.target.result);
                     if (parsed.commandsList && Array.isArray(parsed.commandsList)) {
-                        commandsList = parsed.commandsList;
+                        commandsList = parsed.parsedCommandsList || parsed.commandsList;
                         if (parsed.globalScanRules) globalScanRules = parsed.globalScanRules;
                         saveConfigToLocalStorage();
                         renderAdminRules();
