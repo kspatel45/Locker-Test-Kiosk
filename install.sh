@@ -30,4 +30,4 @@ echo "==========================================================================
 echo " Setup complete! Launching Google Chrome in full-screen mode..."
 echo "=============================================================================="
 
-google-chrome-stable --force-device-scale-factor=0.8 --start-fullscreen "https://kspatel45.github.io/Locker-Test-Kiosk/" &
+google-chrome-stable --force-device-scale-factor=0.9 --start-fullscreen "https://kspatel45.github.io/Locker-Test-Kiosk/" &
