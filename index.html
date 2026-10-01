@@ -1,0 +1,1365 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-100 text-slate-800">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lowe's Kiosk Web Serial Locker Tester</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .pulse-yellow {
+            animation: pulse-yellow-anim 1.2s infinite ease-in-out;
+        }
+        @keyframes pulse-yellow-anim {
+            0%, 100% { background-color: #fef08a; color: #854d0e; border-color: #eab308; }
+            50% { background-color: #fde047; color: #713f12; border-color: #ca8a04; }
+        }
+        .pulse-blue {
+            animation: pulse-blue-anim 1.2s infinite ease-in-out;
+        }
+        @keyframes pulse-blue-anim {
+            0%, 100% { background-color: #bae6fd; color: #0369a1; border-color: #38bdf8; }
+            50% { background-color: #7dd3fc; color: #0c4a6e; border-color: #0284c7; }
+        }
+        .highlight-alfie-yellow {
+            background-color: #fef08a !important;
+            color: #854d0e !important;
+            border-color: #eab308 !important;
+            box-shadow: 0 0 0 2px #f59e0b inset;
+        }
+        .highlight-ubie-blue {
+            background-color: #0284c7 !important;
+            color: #ffffff !important;
+            border-color: #0369a1 !important;
+            box-shadow: 0 0 0 2px #38bdf8 inset;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col font-sans antialiased bg-slate-100 text-slate-800">
+
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+            <!-- Brand / Title -->
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-brand-50 text-brand-600 rounded-lg border border-brand-200 shadow-sm">
+                    <i class="fa-solid fa-cubes-stacked text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-900 leading-none">Lowe's Kiosk Locker Matrix</h1>
+                    <p class="text-xs text-slate-500 mt-1">6-Column Multi-Cell Web Serial Diagnostic & Automation Suite</p>
+                </div>
+            </div>
+
+            <!-- Serial Connection Bar -->
+            <div class="flex items-center gap-3">
+                <div class="flex items-center space-x-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+                    <label for="baudRate" class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Baud:</label>
+                    <select id="baudRate" class="bg-transparent text-xs font-mono font-medium text-slate-800 focus:outline-none cursor-pointer">
+                        <option value="9600">9600</option>
+                        <option value="115200" selected>115200 (Default)</option>
+                        <option value="921600">921600</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center space-x-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+                    <label for="lineEnding" class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Ending:</label>
+                    <select id="lineEnding" class="bg-transparent text-xs font-mono font-medium text-slate-800 focus:outline-none cursor-pointer">
+                        <option value="\r\n">\r\n (CR+LF)</option>
+                        <option value="\r" selected>\r (CR)</option>
+                        <option value="\n">\n (LF)</option>
+                        <option value="">None</option>
+                    </select>
+                </div>
+
+                <button id="btnConnect" onclick="connectSerial()" class="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg bg-brand-600 hover:bg-brand-700 text-white transition-all shadow-sm active:scale-95">
+                    <i class="fa-solid fa-plug"></i>
+                    <span>Connect COM Port</span>
+                </button>
+                <button id="btnDisconnect" onclick="disconnectSerial()" disabled class="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-600 hover:text-white transition-all opacity-50 cursor-not-allowed active:scale-95">
+                    <i class="fa-solid fa-power-off"></i>
+                    <span>Disconnect</span>
+                </button>
+
+                <div id="connectionBadge" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-300 text-xs font-semibold text-slate-600">
+                    <span class="w-2.5 h-2.5 rounded-full bg-slate-400 animate-pulse"></span>
+                    <span id="connectionBadgeText">Disconnected</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex-1 flex flex-col max-w-[1800px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Navigation Tabs & Global Quick Action Toolbar -->
+        <div class="flex flex-col xl:flex-row items-center justify-between border-b border-slate-200 pb-4 gap-4">
+            <nav class="flex space-x-2" aria-label="Tabs">
+                <button id="tabDashboardBtn" onclick="switchTab('dashboard')" class="px-4 py-2 font-medium text-sm rounded-lg text-brand-700 bg-brand-50 border border-brand-200 shadow-sm transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-table-cells"></i>
+                    <span>6-Column Dashboard Matrix</span>
+                </button>
+                <button id="tabAdminBtn" onclick="switchTab('admin')" class="px-4 py-2 font-medium text-sm rounded-lg text-slate-600 hover:text-slate-900 hover:bg-white border border-transparent transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>Admin Command Setup</span>
+                </button>
+            </nav>
+
+            <div id="quickBar" class="flex items-center gap-2 flex-wrap">
+                <!-- STOP BUTTON -->
+                <button id="btnStopTest" onclick="stopTest()" class="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg shadow-md transition flex items-center gap-2 active:scale-95 animate-pulse">
+                    <i class="fa-solid fa-circle-stop text-sm"></i> STOP TEST
+                </button>
+                
+                <span class="text-xs text-slate-500 font-semibold ml-2 mr-1">Global Actions:</span>
+                <button onclick="runBatchTest('scan_all')" class="px-3 py-1.5 bg-white hover:bg-slate-800 hover:text-white text-slate-700 text-xs font-semibold rounded-lg border border-slate-300 shadow-sm transition flex items-center gap-1.5 active:scale-95">
+                    <i class="fa-solid fa-barcode text-brand-600"></i> Scan All
+                </button>
+                <button onclick="scanAlfies()" class="px-3 py-1.5 bg-amber-50 hover:bg-amber-500 hover:text-white text-amber-900 text-xs font-semibold rounded-lg border border-amber-300 shadow-sm transition flex items-center gap-1.5 active:scale-95">
+                    <i class="fa-solid fa-server text-amber-600"></i> Scan Alfies
+                </button>
+                <button onclick="scanUbies()" class="px-3 py-1.5 bg-sky-50 hover:bg-sky-600 hover:text-white text-sky-900 text-xs font-semibold rounded-lg border border-sky-300 shadow-sm transition flex items-center gap-1.5 active:scale-95">
+                    <i class="fa-solid fa-wifi text-sky-600"></i> Scan Ubies
+                </button>
+                <button onclick="runBatchTest('latch')" class="px-3 py-1.5 bg-white hover:bg-amber-600 hover:text-white text-slate-700 text-xs font-semibold rounded-lg border border-slate-300 shadow-sm transition flex items-center gap-1.5 active:scale-95">
+                    <i class="fa-solid fa-lock-open text-amber-500"></i> Test All Latches
+                </button>
+                <button onclick="runBatchTest('ubie')" class="px-3 py-1.5 bg-white hover:bg-emerald-600 hover:text-white text-slate-700 text-xs font-semibold rounded-lg border border-slate-300 shadow-sm transition flex items-center gap-1.5 active:scale-95">
+                    <i class="fa-solid fa-microchip text-emerald-500"></i> Test All Ubies
+                </button>
+                <button onclick="resetAllStatuses()" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 active:scale-95">
+                    <i class="fa-solid fa-rotate-left"></i> Reset Color Highlights
+                </button>
+            </div>
+        </div>
+
+        <!-- ================= TAB 1: 6-COLUMN DASHBOARD MATRIX ================= -->
+        <main id="tabDashboard" class="flex-1 space-y-4">
+            
+            <!-- Legend Banner -->
+            <div class="bg-white border border-slate-200 rounded-xl p-3.5 flex flex-wrap items-center justify-between text-xs gap-4 shadow-sm">
+                <div class="flex items-center gap-3 flex-wrap">
+                    <span class="text-slate-500 font-bold uppercase tracking-wider text-[11px]">Cell State Legend:</span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-50 border border-slate-200 text-slate-700 font-mono"><span class="w-2.5 h-2.5 rounded-full bg-slate-400"></span> Idle / Ready</span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-100 border border-amber-300 text-amber-900 font-mono font-bold"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping"></span> Alfie / Col Scan (Yellow)</span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-sky-600 text-white font-mono font-bold"><i class="fa-solid fa-wifi"></i> Ubie Feedback (Blue)</span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-600 text-white font-mono font-bold"><i class="fa-solid fa-check"></i> PASS</span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-red-600 text-white font-mono font-bold"><i class="fa-solid fa-xmark"></i> FAIL</span>
+                </div>
+                <div class="text-slate-500 italic text-[11px] flex items-center gap-1">
+                    <i class="fa-solid fa-circle-info text-brand-600"></i>
+                    <span>Tip: Click any Latch # cell to test Latch, or click Ubie cell block to test Ubie module.</span>
+                </div>
+            </div>
+
+            <!-- 6 Columns Table Container -->
+            <div id="sixColumnsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                <!-- Dynamically generated 6 columns -->
+            </div>
+        </main>
+
+        <!-- ================= TAB 2: ADMIN COMMAND SETUP & LOGS ================= -->
+        <main id="tabAdmin" class="hidden flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Left Terminal Monitor (5 Cols) -->
+            <section class="lg:col-span-5 flex flex-col bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                <div class="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-terminal text-brand-600 text-sm"></i>
+                        <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Web Serial Monitor Log</h3>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="inline-flex items-center cursor-pointer text-xs text-slate-600">
+                            <input type="checkbox" id="chkAutoscroll" checked class="sr-only peer">
+                            <div class="w-7 h-4 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-brand-600"></div>
+                            <span class="ml-1.5 text-[10px] font-mono">Auto-Scroll</span>
+                        </label>
+                        <button onclick="clearTerminalLog()" class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-600 text-xs rounded border border-slate-300 transition">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="terminalLog" class="flex-1 bg-slate-900 font-mono text-xs p-3 overflow-y-auto min-h-[360px] max-h-[500px] space-y-1.5 border-b border-slate-200 text-slate-100">
+                    <div class="text-slate-500 italic">// Serial log monitor initialized...</div>
+                </div>
+
+                <form onsubmit="handleManualSend(event)" class="p-3 bg-slate-50 flex items-center gap-2">
+                    <div class="relative flex-1">
+                        <input type="text" id="manualCmdInput" placeholder="Send Raw Serial Command (e.g. t01f25101)..." class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 focus:outline-none focus:border-brand-600 transition shadow-sm">
+                    </div>
+                    <button type="submit" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-lg transition active:scale-95 flex items-center gap-1.5 shadow-sm">
+                        <span>Send</span>
+                        <i class="fa-solid fa-paper-plane text-[10px]"></i>
+                    </button>
+                </form>
+            </section>
+
+            <!-- Right Admin Setup Panel (7 Cols) -->
+            <section class="lg:col-span-7 flex flex-col gap-4">
+                
+                <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-sliders text-amber-600"></i>
+                            <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Alfie & Ubie Scan Command Rules</h3>
+                        </div>
+                        <span class="text-[11px] text-slate-500 italic">Maps incoming feedback to yellow/blue box color highlights</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <div class="space-y-2 bg-amber-50/50 border border-amber-200/80 p-3 rounded-lg">
+                            <h4 class="text-xs font-bold text-amber-900 flex items-center justify-between">
+                                <span>Alfie Column Feedback Rules (Yellow)</span>
+                                <i class="fa-solid fa-server text-amber-600"></i>
+                            </h4>
+                            <div class="space-y-1.5 max-h-40 overflow-y-auto text-xs font-mono" id="alfieRulesContainer">
+                            </div>
+                        </div>
+
+                        <div class="space-y-2 bg-sky-50/50 border border-sky-200/80 p-3 rounded-lg">
+                            <h4 class="text-xs font-bold text-sky-900 flex items-center justify-between">
+                                <span>Ubie Scan Feedback Rules (Blue)</span>
+                                <i class="fa-solid fa-wifi text-sky-600"></i>
+                            </h4>
+                            <div class="space-y-1.5 max-h-40 overflow-y-auto text-xs font-mono" id="ubieRulesContainer">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-file-code text-brand-600"></i>
+                            <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Command Set Repository JSON</h3>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="generateDefaultCommandSets()" class="px-2.5 py-1.5 bg-slate-100 hover:bg-brand-600 hover:text-white text-slate-700 text-xs rounded-lg border border-slate-300 transition flex items-center gap-1 shadow-sm">
+                                <i class="fa-solid fa-wand-magic-sparkles text-amber-500"></i> Reset Defaults
+                            </button>
+                            <button onclick="exportJsonConfig()" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs rounded-lg border border-slate-300 transition flex items-center gap-1 shadow-sm">
+                                <i class="fa-solid fa-download text-xs"></i> Export JSON
+                            </button>
+                            <label class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs rounded-lg border border-slate-300 cursor-pointer transition flex items-center gap-1 shadow-sm">
+                                <i class="fa-solid fa-upload text-xs"></i> Import JSON
+                                <input type="file" id="importJsonFile" accept=".json" onchange="importJsonConfig(event)" class="hidden">
+                            </label>
+                        </div>
+                    </div>
+
+                    <details class="group">
+                        <summary class="cursor-pointer text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1 transition">
+                            <i class="fa-solid fa-chevron-right text-[10px] group-open:rotate-90 transition-transform"></i>
+                            <span>View / Edit Raw Command JSON Schema</span>
+                        </summary>
+                        <div class="mt-3 space-y-2">
+                            <textarea id="jsonEditorArea" rows="6" class="w-full bg-slate-900 font-mono text-xs text-slate-200 border border-slate-300 rounded-lg p-2.5 focus:outline-none focus:border-brand-600"></textarea>
+                            <div class="flex justify-end">
+                                <button onclick="applyJsonFromEditor()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition shadow-sm">
+                                    Apply Configuration
+                                </button>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+
+                <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm flex-1 flex flex-col">
+                    <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Command Mapping Matrix</h3>
+                            <select id="adminColFilter" onchange="renderAdminTable()" class="bg-white border border-slate-300 text-slate-700 text-xs rounded-lg px-2.5 py-1 focus:outline-none shadow-sm">
+                                <option value="ALL">All Columns (1-6)</option>
+                                <option value="1">Column 1</option>
+                                <option value="2">Column 2</option>
+                                <option value="3">Column 3</option>
+                                <option value="4">Column 4</option>
+                                <option value="5">Column 5</option>
+                                <option value="6">Column 6</option>
+                            </select>
+                        </div>
+                        <span id="cmdCountBadge" class="text-[10px] font-mono bg-slate-200 text-slate-700 px-2.5 py-0.5 rounded-full font-bold">0 Commands Mapped</span>
+                    </div>
+
+                    <div class="overflow-x-auto flex-1 max-h-[380px]">
+                        <table class="w-full text-left text-xs font-mono border-collapse">
+                            <thead class="bg-slate-100 text-slate-600 uppercase text-[10px] tracking-wider sticky top-0 z-10 border-b border-slate-200">
+                                <tr>
+                                    <th class="py-2.5 px-3 border-b border-slate-200">Target</th>
+                                    <th class="py-2.5 px-3 border-b border-slate-200">Scan Cmd / Feedback</th>
+                                    <th class="py-2.5 px-3 border-b border-slate-200">Latch Cmd / Feedback</th>
+                                    <th class="py-2.5 px-3 border-b border-slate-200">Ubie Cmd / Feedback</th>
+                                    <th class="py-2.5 px-3 border-b border-slate-200 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminCmdTableBody" class="divide-y divide-slate-200 text-slate-800">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </section>
+        </main>
+    </div>
+
+    <script>
+        let commandsList = [];
+        let globalScanRules = {
+            alfies: [],
+            ubies: []
+        };
+
+        const DEFAULT_CONFIG_DATA = {
+            "globalScanRules": {
+                "alfies": [
+                    { "col": 1, "cmd": "t01F25276", "fb": "t01f" },
+                    { "col": 2, "cmd": "t02F25276", "fb": "t02f" },
+                    { "col": 3, "cmd": "t03F25276", "fb": "t03f" },
+                    { "col": 4, "cmd": "t04f25276", "fb": "t04f" },
+                    { "col": 5, "cmd": "t05F25276", "fb": "t05f" },
+                    { "col": 6, "cmd": "t06F25276", "fb": "t06f" }
+                ],
+                "ubies": [
+                    { "col": 1, "ubie": 1, "cmd": "t01A156", "fb": "t01A469560101" },
+                    { "col": 1, "ubie": 2, "cmd": "t02A156", "fb": "t02A469560101" },
+                    { "col": 1, "ubie": 3, "cmd": "t03A156", "fb": "t03A469560101" },
+                    { "col": 1, "ubie": 4, "cmd": "t04A156", "fb": "t04A469560101" },
+                    { "col": 2, "ubie": 1, "cmd": "t05A156", "fb": "t05A469560101" },
+                    { "col": 2, "ubie": 2, "cmd": "t06A156", "fb": "t06A469560101" },
+                    { "col": 2, "ubie": 3, "cmd": "t07A156", "fb": "t07A469560101" },
+                    { "col": 2, "ubie": 4, "cmd": "t08A156", "fb": "t08A469560101" },
+                    { "col": 3, "ubie": 1, "cmd": "t09A156", "fb": "t09A469560101" },
+                    { "col": 3, "ubie": 2, "cmd": "t0aA156", "fb": "t0aA469560101" },
+                    { "col": 3, "ubie": 3, "cmd": "t0bA156", "fb": "t0bA469560101" },
+                    { "col": 3, "ubie": 4, "cmd": "t0cA156", "fb": "t0cA469560101" },
+                    { "col": 4, "ubie": 1, "cmd": "t0dA156", "fb": "t0dA469560101" },
+                    { "col": 4, "ubie": 2, "cmd": "t0eA156", "fb": "t0eA469560101" },
+                    { "col": 4, "ubie": 3, "cmd": "t0fA156", "fb": "t0fA469560101" },
+                    { "col": 4, "ubie": 4, "cmd": "t10A156", "fb": "t10A469560101" },
+                    { "col": 5, "ubie": 1, "cmd": "t11A156", "fb": "t11A469560101" },
+                    { "col": 5, "ubie": 2, "cmd": "t12A156", "fb": "t12A469560101" },
+                    { "col": 5, "ubie": 3, "cmd": "t13A156", "fb": "t13A469560101" },
+                    { "col": 5, "ubie": 4, "cmd": "t14A156", "fb": "t14A469560101" },
+                    { "col": 6, "ubie": 1, "cmd": "t15A156", "fb": "t15A469560101" },
+                    { "col": 6, "ubie": 2, "cmd": "t16A156", "fb": "t16A469560101" },
+                    { "col": 6, "ubie": 3, "cmd": "t17A156", "fb": "t17A469560101" },
+                    { "col": 6, "ubie": 4, "cmd": "t18A156", "fb": "t18A469560101" }
+                ]
+            },
+            "commandsList": [
+                { "column": 1, "latch": 1, "ubie": 1, "ubiePort": 1, "scanCmd": "t01124f01", "scanFb": "t0113736F01", "openCmd": "t01f24f01", "openFb": "t01f3736f01", "ubieCmd": "t01A25001", "ubieFb": "t01A86970010101", "ubieFb1": "t01A86970010201", "ubieFb2": "t01A86970010301", "ubieFb3": "t01A86970010401" },
+                { "column": 1, "latch": 2, "ubie": 1, "ubiePort": 2, "scanCmd": "t01124f02", "scanFb": "t0113736F02", "openCmd": "t01f24f02", "openFb": "t01f3736f02", "ubieCmd": "t01A25002", "ubieFb": "t01A86970020101", "ubieFb1": "t01A86970020201", "ubieFb2": "t01A86970020301", "ubieFb3": "t01A86970020401" },
+                { "column": 1, "latch": 3, "ubie": 1, "ubiePort": 3, "scanCmd": "t01124f03", "scanFb": "t0113736F03", "openCmd": "t01f24f03", "openFb": "t01f3736f03", "ubieCmd": "t01A25003", "ubieFb": "t01A86970030101", "ubieFb1": "t01A86970030201", "ubieFb2": "t01A86970030301", "ubieFb3": "t01A86970030401" },
+                { "column": 1, "latch": 4, "ubie": 1, "ubiePort": 4, "scanCmd": "t01124f04", "scanFb": "t0113736F04", "openCmd": "t01f24f04", "openFb": "t01f3736f04", "ubieCmd": "t01A25004", "ubieFb": "t01A86970040101", "ubieFb1": "t01A86970040201", "ubieFb2": "t01A86970040301", "ubieFb3": "t01A86970040401" },
+                { "column": 1, "latch": 5, "ubie": 2, "ubiePort": 1, "scanCmd": "t01124f05", "scanFb": "t0113736F05", "openCmd": "t01f24f05", "openFb": "t01f3736f05", "ubieCmd": "t02A25001", "ubieFb": "t02A86970010101", "ubieFb1": "t02A86970010201", "ubieFb2": "t02A86970010301", "ubieFb3": "t02A86970010401" },
+                { "column": 1, "latch": 6, "ubie": 2, "ubiePort": 2, "scanCmd": "t01124f06", "scanFb": "t0113736F06", "openCmd": "t01f24f06", "openFb": "t01f3736f06", "ubieCmd": "t02A25002", "ubieFb": "t02A86970020101", "ubieFb1": "t02A86970020201", "ubieFb2": "t02A86970020301", "ubieFb3": "t02A86970020401" },
+                { "column": 1, "latch": 7, "ubie": 2, "ubiePort": 3, "scanCmd": "t01124f07", "scanFb": "t0113736F07", "openCmd": "t01f24f07", "openFb": "t01f3736f07", "ubieCmd": "t02A25003", "ubieFb": "t02A86970030101", "ubieFb1": "t02A86970030201", "ubieFb2": "t02A86970030301", "ubieFb3": "t02A86970030401" },
+                { "column": 1, "latch": 8, "ubie": 2, "ubiePort": 4, "scanCmd": "t01124f08", "scanFb": "t0113736F08", "openCmd": "t01f24f08", "openFb": "t01f3736f08", "ubieCmd": "t02A25004", "ubieFb": "t02A86970040101", "ubieFb1": "t02A86970040201", "ubieFb2": "t02A86970040301", "ubieFb3": "t02A86970040401" },
+                { "column": 1, "latch": 9, "ubie": 3, "ubiePort": 1, "scanCmd": "t01124f09", "scanFb": "t0113736F09", "openCmd": "t01f24f09", "openFb": "t01f3736f09", "ubieCmd": "t03A25001", "ubieFb": "t03A86970010101", "ubieFb1": "t03A86970010201", "ubieFb2": "t03A86970010301", "ubieFb3": "t03A86970010401" },
+                { "column": 1, "latch": 10, "ubie": 3, "ubiePort": 2, "scanCmd": "t01124f0A", "scanFb": "t0113736F0A", "openCmd": "t01f24f0a", "openFb": "t01f3736f0a", "ubieCmd": "t03A25002", "ubieFb": "t03A86970020101", "ubieFb1": "t03A86970020201", "ubieFb2": "t03A86970020301", "ubieFb3": "t03A86970020401" },
+                { "column": 1, "latch": 11, "ubie": 3, "ubiePort": 3, "scanCmd": "t01124f0B", "scanFb": "t0113736F0B", "openCmd": "t01f24f0b", "openFb": "t01f3736f0b", "ubieCmd": "t03A25003", "ubieFb": "t03A86970030101", "ubieFb1": "t03A86970030201", "ubieFb2": "t03A86970030301", "ubieFb3": "t03A86970030401" },
+                { "column": 1, "latch": 12, "ubie": 3, "ubiePort": 4, "scanCmd": "t01124f0C", "scanFb": "t0113736F0C", "openCmd": "t01f24f0c", "openFb": "t01f3736f0c", "ubieCmd": "t03A25004", "ubieFb": "t03A86970040101", "ubieFb1": "t03A86970040201", "ubieFb2": "t03A86970040301", "ubieFb3": "t03A86970040401" },
+                { "column": 1, "latch": 13, "ubie": 4, "ubiePort": 1, "scanCmd": "t01124f0D", "scanFb": "t0113736F0D", "openCmd": "t01f24f0d", "openFb": "t01f3736f0d", "ubieCmd": "t04A25001", "ubieFb": "t04A86970010101", "ubieFb1": "t04A86970010201", "ubieFb2": "t04A86970010301", "ubieFb3": "t04A86970010401" },
+                { "column": 1, "latch": 14, "ubie": 4, "ubiePort": 2, "scanCmd": "t01124f0E", "scanFb": "t0113736F0E", "openCmd": "t01f24f0e", "openFb": "t01f3736f0e", "ubieCmd": "t04A25002", "ubieFb": "t04A86970020101", "ubieFb1": "t04A86970020201", "ubieFb2": "t04A86970020301", "ubieFb3": "t04A86970020401" },
+                { "column": 1, "latch": 15, "ubie": 4, "ubiePort": 3, "scanCmd": "t01124f0F", "scanFb": "t0113736F0F", "openCmd": "t01f24f0f", "openFb": "t01f3736f0f", "ubieCmd": "t04A25003", "ubieFb": "t04A86970030101", "ubieFb1": "t04A86970030201", "ubieFb2": "t04A86970030301", "ubieFb3": "t04A86970030401" },
+                { "column": 1, "latch": 16, "ubie": 4, "ubiePort": 4, "scanCmd": "t01124f10", "scanFb": "t0113736F10", "openCmd": "t01f24f10", "openFb": "t01f3736f10", "ubieCmd": "t04A25004", "ubieFb": "t04A86970040101", "ubieFb1": "t04A86970040201", "ubieFb2": "t04A86970040301", "ubieFb3": "t04A86970040401" },
+                { "column": 1, "latch": 17, "ubie": null, "ubiePort": null, "scanCmd": "t01124f11", "scanFb": "t0113736F11", "openCmd": "t01f24f11", "openFb": "t01f3736f11", "ubieCmd": null, "ubieFb": null, "ubieFb1": null, "ubieFb2": null, "ubieFb3": null },
+                { "column": 2, "latch": 1, "ubie": 1, "ubiePort": 1, "scanCmd": "t02124f01", "scanFb": "t0213736F01", "openCmd": "t02f24f01", "openFb": "t02f3736f01", "ubieCmd": "t05A25001", "ubieFb": "t05A86970010101", "ubieFb1": "t05A86970010201", "ubieFb2": "t05A86970010301", "ubieFb3": "t05A86970010401" },
+                { "column": 2, "latch": 2, "ubie": 1, "ubiePort": 2, "scanCmd": "t02124f02", "scanFb": "t0213736F02", "openCmd": "t02f24f02", "openFb": "t02f3736f02", "ubieCmd": "t05A25002", "ubieFb": "t05A86970020101", "ubieFb1": "t05A86970020201", "ubieFb2": "t05A86970020301", "ubieFb3": "t05A86970020401" },
+                { "column": 2, "latch": 3, "ubie": 1, "ubiePort": 3, "scanCmd": "t02124f03", "scanFb": "t0213736F03", "openCmd": "t02f24f03", "openFb": "t02f3736f03", "ubieCmd": "t05A25003", "ubieFb": "t05A86970030101", "ubieFb1": "t05A86970030201", "ubieFb2": "t05A86970030301", "ubieFb3": "t05A86970030401" },
+                { "column": 2, "latch": 4, "ubie": 1, "ubiePort": 4, "scanCmd": "t02124f04", "scanFb": "t0213736F04", "openCmd": "t02f24f04", "openFb": "t02f3736f04", "ubieCmd": "t05A25004", "ubieFb": "t05A86970040101", "ubieFb1": "t05A86970040201", "ubieFb2": "t05A86970040301", "ubieFb3": "t05A86970040401" },
+                { "column": 2, "latch": 5, "ubie": 2, "ubiePort": 1, "scanCmd": "t02124f05", "scanFb": "t0213736F05", "openCmd": "t02f24f05", "openFb": "t02f3736f05", "ubieCmd": "t06A25001", "ubieFb": "t06A86970010101", "ubieFb1": "t06A86970010201", "ubieFb2": "t06A86970010301", "ubieFb3": "t06A86970010401" },
+                { "column": 2, "latch": 6, "ubie": 2, "ubiePort": 2, "scanCmd": "t02124f06", "scanFb": "t0213736F06", "openCmd": "t02f24f06", "openFb": "t02f3736f06", "ubieCmd": "t06A25002", "ubieFb": "t06A86970020101", "ubieFb1": "t06A86970020201", "ubieFb2": "t06A86970020301", "ubieFb3": "t06A86970020401" },
+                { "column": 2, "latch": 7, "ubie": 2, "ubiePort": 3, "scanCmd": "t02124f07", "scanFb": "t0213736F07", "openCmd": "t02f24f07", "openFb": "t02f3736f07", "ubieCmd": "t06A25003", "ubieFb": "t06A86970030101", "ubieFb1": "t06A86970030201", "ubieFb2": "t06A86970030301", "ubieFb3": "t06A86970030401" },
+                { "column": 2, "latch": 8, "ubie": 2, "ubiePort": 4, "scanCmd": "t02124f08", "scanFb": "t0213736F08", "openCmd": "t02f24f08", "openFb": "t02f3736f08", "ubieCmd": "t06A25004", "ubieFb": "t06A86970040101", "ubieFb1": "t06A86970040201", "ubieFb2": "t06A86970040301", "ubieFb3": "t06A86970040401" },
+                { "column": 2, "latch": 9, "ubie": 3, "ubiePort": 1, "scanCmd": "t02124f09", "scanFb": "t0213736F09", "openCmd": "t02f24f09", "openFb": "t02f3736f09", "ubieCmd": "t07A25001", "ubieFb": "t07A86970010101", "ubieFb1": "t07A86970010201", "ubieFb2": "t07A86970010301", "ubieFb3": "t07A86970010401" },
+                { "column": 2, "latch": 10, "ubie": 3, "ubiePort": 2, "scanCmd": "t02124f0A", "scanFb": "t0213736F0A", "openCmd": "t02f24f0a", "openFb": "t02f3736f0a", "ubieCmd": "t07A25002", "ubieFb": "t07A86970020101", "ubieFb1": "t07A86970020201", "ubieFb2": "t07A86970020301", "ubieFb3": "t07A86970020401" },
+                { "column": 2, "latch": 11, "ubie": 3, "ubiePort": 3, "scanCmd": "t02124f0B", "scanFb": "t0213736F0B", "openCmd": "t02f24f0b", "openFb": "t02f3736f0b", "ubieCmd": "t07A25003", "ubieFb": "t07A86970030101", "ubieFb1": "t07A86970030201", "ubieFb2": "t07A86970030301", "ubieFb3": "t07A86970030401" },
+                { "column": 2, "latch": 12, "ubie": 3, "ubiePort": 4, "scanCmd": "t02124f0C", "scanFb": "t0213736F0C", "openCmd": "t02f24f0c", "openFb": "t02f3736f0c", "ubieCmd": "t07A25004", "ubieFb": "t07A86970040101", "ubieFb1": "t07A86970040201", "ubieFb2": "t07A86970040301", "ubieFb3": "t07A86970040401" },
+                { "column": 2, "latch": 13, "ubie": 4, "ubiePort": 1, "scanCmd": "t02124f0D", "scanFb": "t0213736F0D", "openCmd": "t02f24f0d", "openFb": "t02f3736f0d", "ubieCmd": "t08A25001", "ubieFb": "t08A86970010101", "ubieFb1": "t08A86970010201", "ubieFb2": "t08A86970010301", "ubieFb3": "t08A86970010401" },
+                { "column": 2, "latch": 14, "ubie": 4, "ubiePort": 2, "scanCmd": "t02124f0E", "scanFb": "t0213736F0E", "openCmd": "t02f24f0e", "openFb": "t02f3736f0e", "ubieCmd": "t08A25002", "ubieFb": "t08A86970020101", "ubieFb1": "t08A86970020201", "ubieFb2": "t08A86970020301", "ubieFb3": "t08A86970020401" },
+                { "column": 2, "latch": 15, "ubie": 4, "ubiePort": 3, "scanCmd": "t02124f0F", "scanFb": "t0213736F0F", "openCmd": "t02f24f0f", "openFb": "t02f3736f0f", "ubieCmd": "t08A25003", "ubieFb": "t08A86970030101", "ubieFb1": "t08A86970030201", "ubieFb2": "t08A86970030301", "ubieFb3": "t08A86970030401" },
+                { "column": 2, "latch": 16, "ubie": 4, "ubiePort": 4, "scanCmd": "t02124f10", "scanFb": "t0213736F10", "openCmd": "t02f24f10", "openFb": "t02f3736f10", "ubieCmd": "t08A25004", "ubieFb": "t08A86970040101", "ubieFb1": "t08A86970040201", "ubieFb2": "t08A86970040301", "ubieFb3": "t08A86970040401" },
+                { "column": 2, "latch": 17, "ubie": null, "ubiePort": null, "scanCmd": "t02124f11", "scanFb": "t0213736F11", "openCmd": "t02f24f11", "openFb": "t02f3736f11", "ubieCmd": null, "ubieFb": null, "ubieFb1": null, "ubieFb2": null, "ubieFb3": null }
+            ]
+        };
+
+        const STORAGE_KEY = "lowes_kiosk_cmd_config";
+        let abortTesting = false;
+
+        function stopTest() {
+            abortTesting = true;
+            if (pendingExpectation) {
+                pendingExpectation.reject(new Error("Test Aborted by User"));
+                pendingExpectation = null;
+            }
+            logToTerminal("ERROR", ">>> TEST STOPPED BY USER <<<");
+        }
+
+        function saveConfigToLocalStorage() {
+            try {
+                const configToSave = {
+                    globalScanRules: globalScanRules,
+                    commandsList: commandsList
+                };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(configToSave));
+            } catch (err) {
+                console.error("Failed to save configuration to localStorage:", err);
+            }
+        }
+
+        function loadConfigFromLocalStorage() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (parsed.commandsList && Array.isArray(parsed.commandsList)) {
+                        commandsList = parsed.commandsList;
+                        if (parsed.globalScanRules) globalScanRules = parsed.globalScanRules;
+                        return true;
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to load configuration from localStorage:", err);
+            }
+            return false;
+        }
+
+        function generateDefaultCommandSets() {
+            const deepCopy = JSON.parse(JSON.stringify(DEFAULT_CONFIG_DATA));
+            globalScanRules = deepCopy.globalScanRules;
+            commandsList = deepCopy.commandsList;
+
+            saveConfigToLocalStorage();
+            renderAdminRules();
+            if (document.getElementById("jsonEditorArea")) {
+                document.getElementById("jsonEditorArea").value = JSON.stringify({
+                    globalScanRules: globalScanRules,
+                    commandsList: commandsList
+                }, null, 2);
+            }
+        }
+
+        /* WEB SERIAL CONTROLLER */
+        let port = null;
+        let reader = null;
+        let closedPromise = null;
+        let keepReading = false;
+        let pendingExpectation = null;
+
+        async function connectSerial() {
+            if (!("serial" in navigator)) {
+                alert("Web Serial API is not supported in this browser. Please use Chrome, Edge, or Opera.");
+                return;
+            }
+
+            const baudRateInput = parseInt(document.getElementById("baudRate").value, 10);
+
+            try {
+                updateConnectionStatus("Connecting...", "yellow");
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: baudRateInput });
+
+                updateConnectionStatus("Connected", "emerald");
+                document.getElementById("btnConnect").disabled = true;
+                document.getElementById("btnConnect").classList.add("opacity-50", "cursor-not-allowed");
+                document.getElementById("btnDisconnect").disabled = false;
+                document.getElementById("btnDisconnect").classList.remove("opacity-50", "cursor-not-allowed");
+
+                keepReading = true;
+                readSerialLoop();
+                logToTerminal("SYSTEM", `Connected to serial port at ${baudRateInput} baud.`);
+            } catch (err) {
+                console.error("Serial connection error:", err);
+                updateConnectionStatus("Disconnected", "red");
+                logToTerminal("ERROR", `Failed to open port: ${err.message}`);
+            }
+        }
+
+        async function disconnectSerial() {
+            keepReading = false;
+            if (reader) {
+                try { await reader.cancel(); } catch (e) {}
+            }
+            if (closedPromise) {
+                try { await closedPromise; } catch(e) {}
+            }
+            if (port) {
+                try { await port.close(); } catch (e) {}
+            }
+            port = null;
+            reader = null;
+
+            updateConnectionStatus("Disconnected", "slate");
+            document.getElementById("btnConnect").disabled = false;
+            document.getElementById("btnConnect").classList.remove("opacity-50", "cursor-not-allowed");
+            document.getElementById("btnDisconnect").disabled = true;
+            document.getElementById("btnDisconnect").classList.add("opacity-50", "cursor-not-allowed");
+            logToTerminal("SYSTEM", "Disconnected from serial port.");
+        }
+
+        function updateConnectionStatus(status, color) {
+            const badge = document.getElementById("connectionBadge");
+            const badgeText = document.getElementById("connectionBadgeText");
+            badgeText.textContent = status;
+
+            const dot = badge.querySelector("span:first-child");
+            if (color === "emerald") {
+                dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500";
+                badge.className = "flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-700";
+            } else if (color === "yellow") {
+                dot.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping";
+                badge.className = "flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-700";
+            } else {
+                dot.className = "w-2.5 h-2.5 rounded-full bg-slate-400";
+                badge.className = "flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-300 text-xs font-semibold text-slate-600";
+            }
+        }
+
+        class LineBreakTransformer {
+            constructor() {
+                this.container = "";
+            }
+            transform(chunk, controller) {
+                this.container += chunk;
+                const lines = this.container.split(/\r\n|\r|\n/);
+                this.container = lines.pop();
+                for (const line of lines) {
+                    controller.enqueue(line);
+                }
+            }
+            flush(controller) {
+                if (this.container) {
+                    controller.enqueue(this.container);
+                }
+            }
+        }
+
+        async function readSerialLoop() {
+            while (port && port.readable && keepReading) {
+                try {
+                    const textDecoder = new TextDecoderStream();
+                    closedPromise = port.readable.pipeTo(textDecoder.writable);
+                    const lineStream = textDecoder.readable.pipeThrough(new TransformStream(new LineBreakTransformer()));
+                    reader = lineStream.getReader();
+
+                    while (keepReading) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+                        if (value !== undefined) {
+                            const trimmed = value.trim();
+                            if (trimmed) handleReceivedLine(trimmed);
+                        }
+                    }
+                } catch (error) {
+                    if (keepReading) {
+                        logToTerminal("ERROR", `Read stream error: ${error.message}`);
+                    }
+                    break;
+                } finally {
+                    if (reader) {
+                        try { reader.releaseLock(); } catch(e) {}
+                    }
+                }
+            }
+        }
+
+        function handleReceivedLine(line) {
+            logToTerminal("RX", line);
+
+            globalScanRules.alfies.forEach(rule => {
+                if (rule.fb && line.toLowerCase().includes(rule.fb.toLowerCase())) {
+                    highlightAlfieColumn(rule.col);
+                }
+            });
+
+            globalScanRules.ubies.forEach(rule => {
+                const feedbacks = Array.isArray(rule.fb) ? rule.fb : [rule.fb];
+                const matchesAny = feedbacks.some(fb => fb && line.toLowerCase().includes(fb.toLowerCase()));
+                if (matchesAny) {
+                    highlightUbieBlock(rule.col, rule.ubie);
+                }
+            });
+
+            if (pendingExpectation) {
+                const isMatch = pendingExpectation.expectedResponses.some(exp => 
+                    exp && line.toLowerCase().includes(exp.toLowerCase())
+                );
+                if (isMatch) {
+                    pendingExpectation.resolve(line);
+                    pendingExpectation = null;
+                }
+            }
+        }
+
+        function getLineEndingString() {
+            const endingVal = document.getElementById("lineEnding") ? document.getElementById("lineEnding").value : "\\r";
+            if (endingVal === "\\r\\n") return "\r\n";
+            if (endingVal === "\\r") return "\r";
+            if (endingVal === "\\n") return "\n";
+            return "";
+        }
+
+        async function sendCommand(cmd, expectedResponses = [], timeoutMs = 2500) {
+            if (abortTesting) {
+                throw new Error("Test Aborted");
+            }
+
+            logToTerminal("TX", cmd);
+
+            if (!port || !port.writable) {
+                logToTerminal("SYSTEM", "[SIMULATION MODE] Serial port offline. Simulating response...");
+                return new Promise((resolve, reject) => {
+                    const timer = setTimeout(() => {
+                        if (abortTesting) {
+                            reject(new Error("Test Aborted"));
+                            return;
+                        }
+                        const hexCol = cmd.includes('UBIE_C') ? cmd.split('_C')[1].split('_')[0].padStart(2, '0') : '01';
+                        const mockFb = expectedResponses[0] || (cmd.includes('UBIE') ? `t${hexCol}f_u1_1` : cmd.slice(0,4));
+                        handleReceivedLine(mockFb);
+                        resolve(mockFb);
+                    }, 400);
+                });
+            }
+
+            const textEncoder = new TextEncoder();
+            const writer = port.writable.getWriter();
+            const ending = getLineEndingString();
+            const payload = textEncoder.encode(cmd + ending);
+
+            try {
+                await writer.write(payload);
+            } finally {
+                writer.releaseLock();
+            }
+
+            if (expectedResponses.length === 0) return true;
+
+            return new Promise((resolve, reject) => {
+                const timer = setTimeout(() => {
+                    if (pendingExpectation === pObj) pendingExpectation = null;
+                    reject(new Error("Response Timeout"));
+                }, timeoutMs);
+
+                const pObj = {
+                    expectedResponses,
+                    resolve: (matchedLine) => {
+                        clearTimeout(timer);
+                        resolve(matchedLine);
+                    },
+                    reject: (err) => {
+                        clearTimeout(timer);
+                        reject(err);
+                    }
+                };
+                pendingExpectation = pObj;
+            });
+        }
+
+        // Send a command continuously every 1 second until expected response arrives or total timeout elapsed
+        async function sendCommandWithIntervalScan(cmd, expectedResponses = [], totalTimeoutMs = 30000, intervalMs = 1000) {
+            if (abortTesting) throw new Error("Test Aborted");
+
+            const startTime = Date.now();
+            let matchedResult = null;
+
+            return new Promise((resolve, reject) => {
+                let intervalTimer = null;
+                let timeoutTimer = null;
+
+                const cleanup = () => {
+                    if (intervalTimer) clearInterval(intervalTimer);
+                    if (timeoutTimer) clearTimeout(timeoutTimer);
+                    if (pendingExpectation === pObj) pendingExpectation = null;
+                };
+
+                const pObj = {
+                    expectedResponses,
+                    resolve: (matchedLine) => {
+                        cleanup();
+                        resolve(matchedLine);
+                    },
+                    reject: (err) => {
+                        cleanup();
+                        reject(err);
+                    }
+                };
+
+                pendingExpectation = pObj;
+
+                const attemptSend = async () => {
+                    if (abortTesting) {
+                        pObj.reject(new Error("Test Aborted"));
+                        return;
+                    }
+                    try {
+                        logToTerminal("TX", cmd);
+                        if (port && port.writable) {
+                            const textEncoder = new TextEncoder();
+                            const writer = port.writable.getWriter();
+                            const ending = getLineEndingString();
+                            const payload = textEncoder.encode(cmd + ending);
+                            await writer.write(payload);
+                            writer.releaseLock();
+                        } else {
+                            // Simulation mode response trigger after 2s
+                            if (Date.now() - startTime >= 1500) {
+                                const mockFb = expectedResponses[0] || "UBIE_OK";
+                                handleReceivedLine(mockFb);
+                            }
+                        }
+                    } catch (e) {
+                        console.error("Scan send error:", e);
+                    }
+                };
+
+                attemptSend();
+                intervalTimer = setInterval(attemptSend, intervalMs);
+
+                timeoutTimer = setTimeout(() => {
+                    pObj.reject(new Error("30s Response Timeout Exceeded"));
+                }, totalTimeoutMs);
+            });
+        }
+
+        /* 6-COLUMN TABLE DASHBOARD RENDERER */
+        function renderSixColumnsDashboard() {
+            const container = document.getElementById("sixColumnsGrid");
+            if (!container) return;
+            container.innerHTML = "";
+
+            for (let colNum = 1; colNum <= 6; colNum++) {
+                const colWrapper = document.createElement("div");
+                colWrapper.id = `col-card-${colNum}`;
+                colWrapper.className = "bg-white rounded-xl border border-slate-200 flex flex-col overflow-hidden shadow-sm text-xs transition-all duration-300";
+
+                colWrapper.innerHTML = `
+                    <div id="col-header-${colNum}" class="bg-slate-800 text-white px-3 py-2.5 border-b border-slate-200 flex items-center justify-between transition-colors">
+                        <div class="flex items-center gap-1.5 font-bold">
+                            <i class="fa-solid fa-server text-brand-400"></i>
+                            <span>Alfie / Column ${colNum}</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button onclick="testColumnLatches(${colNum})" title="Test All Latches in Col ${colNum}" class="px-1.5 py-0.5 bg-slate-700 hover:bg-amber-600 text-white text-[10px] rounded transition">
+                                <i class="fa-solid fa-lock-open"></i> Latches
+                            </button>
+                            <button onclick="testColumnUbies(${colNum})" title="Test All Ubies in Col ${colNum}" class="px-1.5 py-0.5 bg-slate-700 hover:bg-sky-600 text-white text-[10px] rounded transition">
+                                <i class="fa-solid fa-wifi"></i> Ubies
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-2 overflow-x-auto flex-1">
+                        <table class="w-full text-center border-collapse font-mono border border-slate-200">
+                            <thead>
+                                <tr class="bg-slate-100 text-slate-700 text-[11px] font-bold uppercase border-b border-slate-200">
+                                    <th class="py-2 px-1 border-r border-slate-200 w-1/4">Alfie / Column</th>
+                                    <th class="py-2 px-1 border-r border-slate-200 w-1/4">Latch #</th>
+                                    <th class="py-2 px-1 border-r border-slate-200 w-1/4">UBIE</th>
+                                    <th class="py-2 px-1 w-1/4">UBIE PORT</th>
+                                </tr>
+                            </thead>
+                            <tbody id="col-tbody-${colNum}" class="divide-y divide-slate-200 text-[11px]">
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+
+                container.appendChild(colWrapper);
+
+                const tbody = document.getElementById(`col-tbody-${colNum}`);
+                let tbodyHtml = "";
+
+                for (let latch = 1; latch <= 17; latch++) {
+                    tbodyHtml += `<tr class="hover:bg-slate-50 transition">`;
+
+                    if (latch === 1) {
+                        tbodyHtml += `
+                            <td id="cell-col-${colNum}" rowspan="17" class="border-r border-slate-200 bg-slate-50 font-bold text-slate-800 text-sm align-middle select-none transition-all">
+                                ${colNum}
+                            </td>
+                        `;
+                    }
+
+                    tbodyHtml += `
+                        <td id="cell-latch-c${colNum}-l${latch}" 
+                            onclick="testSingleLatch(${colNum}, ${latch})"
+                            title="Click to test Latch #${latch}"
+                            class="py-1.5 px-1 border-r border-slate-200 cursor-pointer font-bold transition-all hover:brightness-95 bg-white text-slate-800 select-none">
+                            ${latch}
+                        </td>
+                    `;
+
+                    if (latch === 1 || latch === 5 || latch === 9 || latch === 13) {
+                        const ubieNum = (latch === 1) ? 1 : (latch === 5) ? 2 : (latch === 9) ? 3 : 4;
+                        tbodyHtml += `
+                            <td id="cell-ubie-c${colNum}-u${ubieNum}"
+                                rowspan="4" 
+                                onclick="testSingleUbie(${colNum}, ${ubieNum})"
+                                title="Click to test Ubie Module #${ubieNum}"
+                                class="py-1.5 px-1 border-r border-slate-200 cursor-pointer font-bold transition-all hover:brightness-95 bg-white text-slate-800 align-middle select-none">
+                                ${ubieNum}
+                            </td>
+                        `;
+                    } else if (latch === 17) {
+                        tbodyHtml += `
+                            <td class="py-1.5 px-1 border-r border-slate-200 bg-slate-50 text-slate-400 select-none">
+                                -
+                            </td>
+                        `;
+                    }
+
+                    if (latch <= 16) {
+                        const portNum = ((latch - 1) % 4) + 1;
+                        tbodyHtml += `
+                            <td id="cell-port-c${colNum}-l${latch}" class="py-1.5 px-1 font-mono transition-all bg-white text-slate-600 select-none">
+                                ${portNum}
+                            </td>
+                        `;
+                    } else {
+                        tbodyHtml += `
+                            <td class="py-1.5 px-1 bg-slate-50 text-slate-400 select-none">
+                                -
+                            </td>
+                        `;
+                    }
+
+                    tbodyHtml += `</tr>`;
+                }
+
+                tbody.innerHTML = tbodyHtml;
+            }
+        }
+
+        function highlightAlfieColumn(col) {
+            const card = document.getElementById(`col-card-${col}`);
+            const header = document.getElementById(`col-header-${col}`);
+            const colCell = document.getElementById(`cell-col-${col}`);
+
+            if (card) card.classList.add("ring-2", "ring-amber-400", "shadow-md");
+            if (header) header.className = "bg-amber-400 text-amber-950 px-3 py-2.5 border-b border-amber-500 flex items-center justify-between font-bold transition-colors";
+            if (colCell) colCell.className = "border-r border-amber-300 highlight-alfie-yellow font-extrabold text-sm align-middle select-none";
+            logToTerminal("SYSTEM", `Alfie Column ${col} feedback received! Highlighted Yellow.`);
+        }
+
+        function highlightUbieBlock(col, ubieNum) {
+            const cell = document.getElementById(`cell-ubie-c${col}-u${ubieNum}`);
+            if (cell) cell.className = "py-1.5 px-1 border-r border-sky-600 highlight-ubie-blue font-bold align-middle select-none";
+            
+            const startLatch = (ubieNum - 1) * 4 + 1;
+            for (let l = startLatch; l < startLatch + 4; l++) {
+                const portCell = document.getElementById(`cell-port-c${col}-l${l}`);
+                if (portCell) portCell.className = "py-1.5 px-1 font-mono transition-all bg-sky-100 text-sky-900 select-none font-semibold";
+            }
+            logToTerminal("SYSTEM", `Ubie Column ${col} Module ${ubieNum} feedback received! Highlighted Blue.`);
+        }
+
+        function setLatchCellStatus(col, latch, state) {
+            const cell = document.getElementById(`cell-latch-c${col}-l${latch}`);
+            if (!cell) return;
+
+            cell.classList.remove("pulse-yellow", "bg-emerald-600", "bg-red-600", "text-white", "bg-white", "text-slate-800");
+
+            if (state === "TESTING") {
+                cell.classList.add("pulse-yellow");
+            } else if (state === "PASS") {
+                cell.classList.add("bg-emerald-600", "text-white");
+            } else if (state === "FAIL") {
+                cell.classList.add("bg-red-600", "text-white");
+            } else {
+                cell.classList.add("bg-white", "text-slate-800");
+            }
+        }
+
+        function setUbiePortCellStatus(col, latch, state) {
+            const latchCell = document.getElementById(`cell-latch-c${col}-l${latch}`);
+            const portCell = document.getElementById(`cell-port-c${col}-l${latch}`);
+
+            if (state === "TESTING") {
+                if (latchCell) {
+                    latchCell.classList.remove("bg-emerald-600", "bg-red-600", "text-white", "bg-white");
+                    latchCell.classList.add("pulse-yellow");
+                }
+                if (portCell) portCell.className = "py-1.5 px-1 font-mono transition-all bg-amber-100 text-amber-900 select-none font-semibold pulse-yellow";
+            } else if (state === "PASS") {
+                if (latchCell) {
+                    latchCell.classList.remove("pulse-yellow", "bg-white", "text-slate-800");
+                    latchCell.classList.add("bg-emerald-600", "text-white");
+                }
+                if (portCell) portCell.className = "py-1.5 px-1 font-mono transition-all bg-emerald-600 text-white select-none font-bold";
+            } else if (state === "FAIL") {
+                if (latchCell) {
+                    latchCell.classList.remove("pulse-yellow", "bg-white", "text-slate-800");
+                    latchCell.classList.add("bg-red-600", "text-white");
+                }
+                if (portCell) portCell.className = "py-1.5 px-1 font-mono transition-all bg-red-600 text-white select-none font-bold";
+            } else {
+                if (latchCell) {
+                    latchCell.classList.remove("pulse-yellow", "bg-emerald-600", "bg-red-600", "text-white");
+                    latchCell.classList.add("bg-white", "text-slate-800");
+                }
+                if (portCell) portCell.className = "py-1.5 px-1 font-mono transition-all bg-white text-slate-600 select-none";
+            }
+        }
+
+        function setUbieCellStatus(col, ubieNum, state) {
+            const uCell = document.getElementById(`cell-ubie-c${col}-u${ubieNum}`);
+            if (!uCell) return;
+
+            uCell.classList.remove("pulse-blue", "highlight-ubie-blue", "bg-emerald-600", "bg-red-600", "text-white", "bg-white", "text-slate-800");
+            if (state === "TESTING") {
+                uCell.classList.add("pulse-blue");
+            } else if (state === "PASS") {
+                uCell.classList.add("bg-emerald-600", "text-white");
+            } else if (state === "FAIL") {
+                uCell.classList.add("bg-red-600", "text-white");
+            } else {
+                uCell.className = "py-1.5 px-1 border-r border-slate-200 cursor-pointer font-bold transition-all hover:brightness-95 bg-white text-slate-800 align-middle select-none";
+            }
+        }
+
+        async function scanAlfies() {
+            abortTesting = false;
+            logToTerminal("SYSTEM", "Starting Scan Alfies sequence...");
+            for (const rule of globalScanRules.alfies) {
+                if (abortTesting) break;
+                try {
+                    await sendCommand(rule.cmd, [rule.fb]);
+                } catch (err) {
+                    logToTerminal("ERROR", `Scan Alfies Column ${rule.col} failed: ${err.message}`);
+                }
+            }
+        }
+
+        async function scanUbies() {
+            abortTesting = false;
+            logToTerminal("SYSTEM", "Starting Scan Ubies sequence...");
+            for (const rule of globalScanRules.ubies) {
+                if (abortTesting) break;
+                try {
+                    const expectedList = Array.isArray(rule.fb) ? rule.fb : [rule.fb];
+                    await sendCommandWithIntervalScan(rule.cmd, expectedList, 30000, 1000);
+                } catch (err) {
+                    logToTerminal("ERROR", `Scan Ubies Column ${rule.col} Ubie ${rule.ubie} failed: ${err.message}`);
+                }
+            }
+        }
+
+        async function testSingleLatch(col, latch, mode = 'open') {
+            if (abortTesting) return;
+            setLatchCellStatus(col, latch, "TESTING");
+            const item = commandsList.find(c => c.column === col && c.latch === latch);
+
+            if (!item) {
+                logToTerminal("ERROR", `No command mapped for Column ${col} Latch ${latch}`);
+                setLatchCellStatus(col, latch, "FAIL");
+                return;
+            }
+
+            const cmd = (mode === 'scan') ? item.scanCmd : item.openCmd;
+            const fb = (mode === 'scan') ? item.scanFb : item.openFb;
+
+            try {
+                await sendCommand(cmd, [fb]);
+                setLatchCellStatus(col, latch, "PASS");
+            } catch (err) {
+                logToTerminal("FAIL", `Column ${col} Latch ${latch} failed: ${err.message}`);
+                setLatchCellStatus(col, latch, "FAIL");
+            }
+        }
+
+        async function testSingleUbie(col, ubieNum) {
+            if (abortTesting) return;
+            
+            setUbieCellStatus(col, ubieNum, "TESTING");
+            logToTerminal("SYSTEM", `--- Starting Test for Column ${col} Ubie Module ${ubieNum} ---`);
+
+            const startLatch = (ubieNum - 1) * 4 + 1;
+            let entireUbiePass = true;
+
+            // Sequential Test: Open Compartment N -> Scan Ubie Port N (every sec for 30s) -> Pass opens N+1 -> Fail stops sequence
+            for (let portIndex = 0; portIndex < 4; portIndex++) {
+                if (abortTesting) {
+                    setUbieCellStatus(col, ubieNum, "FAIL");
+                    return;
+                }
+
+                const currentLatch = startLatch + portIndex;
+                const portNum = portIndex + 1;
+
+                logToTerminal("SYSTEM", `[Col ${col} Ubie ${ubieNum}] Step 1: Opening Compartment ${currentLatch} (Latch ${currentLatch})...`);
+                await testSingleLatch(col, currentLatch, 'open');
+
+                if (abortTesting) {
+                    setUbieCellStatus(col, ubieNum, "FAIL");
+                    return;
+                }
+
+                setUbiePortCellStatus(col, currentLatch, "TESTING");
+
+                const item = commandsList.find(c => c.column === col && c.latch === currentLatch);
+                const globalRule = globalScanRules.ubies.find(r => r.col === col && r.ubie === ubieNum);
+
+                const hexCol = col.toString(16).padStart(2, '0');
+                let scanCmd = (item && item.ubieCmd) ? item.ubieCmd : `UBIE_C${col}_U${ubieNum}_P${portNum}_SCAN`;
+                
+                let expectedFb = [];
+                if (item && item.ubieFb) {
+                    expectedFb = Array.isArray(item.ubieFb) ? item.ubieFb : [item.ubieFb];
+                } else if (globalRule && globalRule.fb) {
+                    expectedFb = Array.isArray(globalRule.fb) ? globalRule.fb : [globalRule.fb];
+                } else {
+                    expectedFb = [`t${hexCol}f_u${ubieNum}_${portNum}`, `UBIE_C${col}_U${ubieNum}_OK_${portNum}`];
+                }
+
+                logToTerminal("SYSTEM", `[Col ${col} Ubie ${ubieNum}] Step 2: Scanning Ubie Port ${portNum} (sending every 1s, waiting up to 30s)...`);
+
+                try {
+                    await sendCommandWithIntervalScan(scanCmd, expectedFb, 30000, 1000);
+                    setUbiePortCellStatus(col, currentLatch, "PASS");
+                    logToTerminal("SYSTEM", `[Col ${col} Ubie ${ubieNum}] Port ${portNum} (Latch ${currentLatch}) PASS! Proceeding to next port...`);
+                } catch (err) {
+                    entireUbiePass = false;
+                    setUbiePortCellStatus(col, currentLatch, "FAIL");
+                    setUbieCellStatus(col, ubieNum, "FAIL");
+                    logToTerminal("FAIL", `[Col ${col} Ubie ${ubieNum}] Port ${portNum} (Latch ${currentLatch}) NO RESPONSE in 30 seconds. Test STOPPED and considered FAIL.`);
+                    return; // STOP TEST THERE
+                }
+            }
+
+            if (entireUbiePass) {
+                setUbieCellStatus(col, ubieNum, "PASS");
+                highlightUbieBlock(col, ubieNum);
+                logToTerminal("SYSTEM", `>>> Column ${col} Ubie ${ubieNum} ALL 4 PORTS TESTED & PASSED SUCESSFULLY! <<<`);
+            }
+        }
+
+        async function testColumnLatches(col) {
+            abortTesting = false;
+            for (let latch = 1; latch <= 17; latch++) {
+                if (abortTesting) break;
+                await testSingleLatch(col, latch, 'open');
+            }
+        }
+
+        async function testColumnUbies(col) {
+            abortTesting = false;
+            for (let ubieNum = 1; ubieNum <= 4; ubieNum++) {
+                if (abortTesting) break;
+                await testSingleUbie(col, ubieNum);
+            }
+        }
+
+        async function runBatchTest(type) {
+            abortTesting = false;
+            if (type === 'scan_all') {
+                await scanAlfies();
+                if (!abortTesting) await scanUbies();
+                for (let col = 1; col <= 6; col++) {
+                    if (abortTesting) break;
+                    for (let latch = 1; latch <= 17; latch++) {
+                        if (abortTesting) break;
+                        await testSingleLatch(col, latch, 'scan');
+                    }
+                }
+            } else if (type === 'latch') {
+                for (let col = 1; col <= 6; col++) {
+                    if (abortTesting) break;
+                    for (let latch = 1; latch <= 17; latch++) {
+                        if (abortTesting) break;
+                        await testSingleLatch(col, latch, 'open');
+                    }
+                }
+            } else if (type === 'ubie') {
+                for (let col = 1; col <= 6; col++) {
+                    if (abortTesting) break;
+                    await testColumnUbies(col);
+                }
+            }
+        }
+
+        function resetAllStatuses() {
+            for (let col = 1; col <= 6; col++) {
+                const card = document.getElementById(`col-card-${col}`);
+                const header = document.getElementById(`col-header-${col}`);
+                const colCell = document.getElementById(`cell-col-${col}`);
+
+                if (card) card.className = "bg-white rounded-xl border border-slate-200 flex flex-col overflow-hidden shadow-sm text-xs transition-all duration-300";
+                if (header) header.className = "bg-slate-800 text-white px-3 py-2.5 border-b border-slate-200 flex items-center justify-between transition-colors";
+                if (colCell) colCell.className = "border-r border-slate-200 bg-slate-50 font-bold text-slate-800 text-sm align-middle select-none transition-all";
+
+                for (let latch = 1; latch <= 17; latch++) {
+                    setLatchCellStatus(col, latch, "IDLE");
+                    setUbiePortCellStatus(col, latch, "IDLE");
+                }
+                for (let ubieNum = 1; ubieNum <= 4; ubieNum++) {
+                    setUbieCellStatus(col, ubieNum, "IDLE");
+                }
+            }
+            logToTerminal("SYSTEM", "Cleared all status highlight fills.");
+        }
+
+        function logToTerminal(direction, text) {
+            const term = document.getElementById("terminalLog");
+            if (!term) return;
+            const entry = document.createElement("div");
+            const time = new Date().toLocaleTimeString();
+
+            let colorClass = "text-slate-300";
+            if (direction === "TX") colorClass = "text-sky-400 font-semibold";
+            if (direction === "RX" || direction === "RX (SIM)") colorClass = "text-emerald-400 font-semibold";
+            if (direction === "ERROR" || direction === "FAIL") colorClass = "text-red-400 font-semibold";
+            if (direction === "SYSTEM") colorClass = "text-amber-300 italic";
+
+            entry.className = "flex items-start gap-2 leading-relaxed";
+            entry.innerHTML = `<span class="text-slate-500 text-[10px] select-none">[${time}]</span> <span class="${colorClass}">${direction}:</span> <span class="break-all">${escapeHtml(text)}</span>`;
+
+            term.appendChild(entry);
+
+            if (document.getElementById("chkAutoscroll").checked) {
+                term.scrollTop = term.scrollHeight;
+            }
+        }
+
+        function clearTerminalLog() {
+            document.getElementById("terminalLog").innerHTML = `<div class="text-slate-500 italic">// Terminal log cleared.</div>`;
+        }
+
+        async function handleManualSend(e) {
+            e.preventDefault();
+            const input = document.getElementById("manualCmdInput");
+            const val = input.value.trim();
+            if (!val) return;
+
+            try {
+                await sendCommand(val);
+                input.value = "";
+            } catch (err) {
+                logToTerminal("ERROR", err.message);
+            }
+        }
+
+        function renderAdminRules() {
+            const alfieContainer = document.getElementById("alfieRulesContainer");
+            const ubieContainer = document.getElementById("ubieRulesContainer");
+
+            if (!alfieContainer || !ubieContainer) return;
+
+            let alfieHtml = "";
+            globalScanRules.alfies.forEach((r, idx) => {
+                alfieHtml += `
+                    <div class="flex items-center gap-2 bg-white p-1.5 rounded border border-amber-200 shadow-sm">
+                        <span class="font-bold text-amber-900 w-12 text-[10px]">Col ${r.col}:</span>
+                        <input type="text" value="${r.cmd}" onchange="globalScanRules.alfies[${idx}].cmd = this.value; saveConfigToLocalStorage();" placeholder="Cmd" class="w-1/2 px-1.5 py-0.5 border border-slate-200 rounded text-[11px] bg-slate-50">
+                        <input type="text" value="${r.fb}" onchange="globalScanRules.alfies[${idx}].fb = this.value; saveConfigToLocalStorage();" placeholder="Fb" class="w-1/2 px-1.5 py-0.5 border border-slate-200 rounded text-[11px] bg-amber-50 text-amber-900 font-bold">
+                    </div>
+                `;
+            });
+            alfieContainer.innerHTML = alfieHtml;
+
+            let ubieHtml = "";
+            globalScanRules.ubies.forEach((r, idx) => {
+                const fbStr = Array.isArray(r.fb) ? r.fb.join(', ') : r.fb;
+                ubieHtml += `
+                    <div class="flex items-center gap-2 bg-white p-1.5 rounded border border-sky-200 shadow-sm">
+                        <span class="font-bold text-sky-900 w-16 text-[10px]">C${r.col}-U${r.ubie}:</span>
+                        <input type="text" value="${r.cmd}" onchange="globalScanRules.ubies[${idx}].cmd = this.value; saveConfigToLocalStorage();" placeholder="Cmd" class="w-1/3 px-1.5 py-0.5 border border-slate-200 rounded text-[11px] bg-slate-50">
+                        <input type="text" value="${fbStr}" onchange="globalScanRules.ubies[${idx}].fb = this.value.split(',').map(s => s.trim()); saveConfigToLocalStorage();" placeholder="Fb1, Fb2, Fb3, Fb4" class="w-2/3 px-1.5 py-0.5 border border-slate-200 rounded text-[11px] bg-sky-50 text-sky-900 font-bold">
+                    </div>
+                `;
+            });
+            ubieContainer.innerHTML = ubieHtml;
+        }
+
+        function renderAdminTable() {
+            const tbody = document.getElementById("adminCmdTableBody");
+            const badge = document.getElementById("cmdCountBadge");
+            const filterVal = document.getElementById("adminColFilter") ? document.getElementById("adminColFilter").value : "ALL";
+
+            if (!tbody) return;
+            tbody.innerHTML = "";
+
+            let filtered = commandsList;
+            if (filterVal !== "ALL") {
+                filtered = commandsList.filter(c => c.column === parseInt(filterVal, 10));
+            }
+
+            if (badge) badge.textContent = `${filtered.length} Commands Mapped`;
+
+            filtered.forEach((item) => {
+                const tr = document.createElement("tr");
+                tr.className = "hover:bg-slate-50 transition border-b border-slate-200";
+
+                const ubieFbStr = Array.isArray(item.ubieFb) ? item.ubieFb.join(', ') : (item.ubieFb || '-');
+
+                tr.innerHTML = `
+                    <td class="py-2 px-3">
+                        <span class="px-2 py-0.5 text-[10px] rounded font-bold bg-slate-100 text-brand-700 border border-slate-300">Col ${item.column} - Latch ${item.latch}</span>
+                    </td>
+                    <td class="py-2 px-3 text-slate-700">
+                        <div><span class="text-slate-400">Cmd:</span> ${item.scanCmd || '-'}</div>
+                        <div class="text-[10px] text-slate-500"><span class="text-slate-400">Fb:</span> ${item.scanFb || '-'}</div>
+                    </td>
+                    <td class="py-2 px-3 text-amber-800 font-semibold">
+                        <div><span class="text-slate-400">Cmd:</span> ${item.openCmd || '-'}</div>
+                        <div class="text-[10px] text-slate-500"><span class="text-slate-400">Fb:</span> ${item.openFb || '-'}</div>
+                    </td>
+                    <td class="py-2 px-3 text-sky-800 font-semibold">
+                        <div><span class="text-slate-400">Ubie ${item.ubie || '-'}:</span> ${item.ubieCmd || '-'}</div>
+                        <div class="text-[10px] text-slate-500"><span class="text-slate-400">Fb:</span> ${ubieFbStr}</div>
+                    </td>
+                    <td class="py-2 px-3 text-right">
+                        <button onclick="testSingleLatch(${item.column}, ${item.latch}, 'open')" class="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-semibold rounded shadow-sm transition mr-1">
+                            Test Latch
+                        </button>
+                        ${item.ubie ? `
+                            <button onclick="testSingleUbie(${item.column},${item.ubie})" class="px-2 py-1 bg-sky-600 hover:bg-sky-700 text-white text-[10px] font-semibold rounded shadow-sm transition">
+                                Test Ubie
+                            </button>
+                        ` : ''}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            if (document.getElementById("jsonEditorArea")) {
+                document.getElementById("jsonEditorArea").value = JSON.stringify({
+                    globalScanRules: globalScanRules,
+                    commandsList: commandsList
+                }, null, 2);
+            }
+        }
+
+        function exportJsonConfig() {
+            const exportData = {
+                globalScanRules: globalScanRules,
+                commandsList: commandsList
+            };
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `lowes_locker_commands_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importJsonConfig(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (parsed.commandsList && Array.isArray(parsed.commandsList)) {
+                        commandsList = parsed.commandsList;
+                        if (parsed.globalScanRules) globalScanRules = parsed.globalScanRules;
+                        saveConfigToLocalStorage();
+                        renderAdminRules();
+                        renderAdminTable();
+                        alert("Command repository imported successfully!");
+                    } else {
+                        alert("Invalid JSON format. Expected object containing commandsList array.");
+                    }
+                } catch (err) {
+                    alert("Error parsing JSON file: " + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function applyJsonFromEditor() {
+            try {
+                const val = document.getElementById("jsonEditorArea").value;
+                const parsed = JSON.parse(val);
+                if (parsed.commandsList && Array.isArray(parsed.commandsList)) {
+                    commandsList = parsed.commandsList;
+                    if (parsed.globalScanRules) globalScanRules = parsed.globalScanRules;
+                    saveConfigToLocalStorage();
+                    renderAdminRules();
+                    renderAdminTable();
+                    alert("Configuration updated from JSON editor!");
+                } else {
+                    alert("Invalid JSON structure. Ensure commandsList array is present.");
+                }
+            } catch (err) {
+                alert("JSON Syntax Error: " + err.message);
+            }
+        }
+
+        function switchTab(tabName) {
+            const dashTab = document.getElementById("tabDashboard");
+            const adminTab = document.getElementById("tabAdmin");
+            const dashBtn = document.getElementById("tabDashboardBtn");
+            const adminBtn = document.getElementById("tabAdminBtn");
+
+            if (tabName === "dashboard") {
+                dashTab.classList.remove("hidden");
+                adminTab.classList.add("hidden");
+                dashBtn.className = "px-4 py-2 font-medium text-sm rounded-lg text-brand-700 bg-brand-50 border border-brand-200 shadow-sm transition-all flex items-center gap-2";
+                adminBtn.className = "px-4 py-2 font-medium text-sm rounded-lg text-slate-600 hover:text-slate-900 hover:bg-white border border-transparent transition-all flex items-center gap-2";
+            } else {
+                dashTab.classList.add("hidden");
+                adminTab.classList.remove("hidden");
+                adminBtn.className = "px-4 py-2 font-medium text-sm rounded-lg text-brand-700 bg-brand-50 border border-brand-200 shadow-sm transition-all flex items-center gap-2";
+                dashBtn.className = "px-4 py-2 font-medium text-sm rounded-lg text-slate-600 hover:text-slate-900 hover:bg-white border border-transparent transition-all flex items-center gap-2";
+                renderAdminRules();
+                renderAdminTable();
+            }
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            const loaded = loadConfigFromLocalStorage();
+            if (!loaded || !commandsList || commandsList.length === 0) {
+                generateDefaultCommandSets();
+            }
+            renderSixColumnsDashboard();
+            renderAdminRules();
+        });
+    </script>
+</body>
+</html>
