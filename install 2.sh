@@ -15,4 +15,6 @@ echo "==========================================================================
 echo " Launching Google Chrome in full-screen mode..."
 echo "=============================================================================="
 
-google-chrome-stable --force-device-scale-factor=0.8 --start-fullscreen "https://kspatel45.github.io/Locker-Test-Kiosk/" &
+google-chrome-stable --force-device-scale-factor=1 --enable-pinch --enable-features=PinchToZoom --start-fullscreen "https://kspatel45.github.io/Locker-Test-Kiosk/" &
+```[cite: 5]
+
